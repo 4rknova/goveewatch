@@ -9,9 +9,16 @@ Running the script for the first time will generate an empty
 JSON configuration file in the user's root directory. The
 filename of the configuration file is .goveewatch.conf
 
-Here's an example of how to setup aliases for your devices:
+Here's an example of how to setup aliases for your devices
+and set visual thresholds for temperature and humidity:
 
         {
+            "thresholds": { 
+                "temp low" : "17",
+                "temp high": "20",
+                "humidity low" : "50",
+                "humidity high": "60"
+            },
             "devices":[
                 {
                     "name"  : "GVH5075_AAAA",
