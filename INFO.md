@@ -72,6 +72,5 @@ this relevant to the Apple iOS application.  This however provides the RSSI
 for the device.
 
 # References
-1. [Datasheet for Telink
-BLE SoC TLSR8253F512](DS_TLSR8253-E_Datasheet for Telink BLE SoC TLSR8253.pdf)
+1. [Datasheet for Telink BLE SoC TLSR8253F512](DS_TLSR8253-E_Datasheet for Telink BLE SoC TLSR8253.pdf)
 2. [FCC.io public device data](https://fccid.io/2AQA6-H5075)
