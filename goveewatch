@@ -88,7 +88,7 @@ def on_advertisement(advertisement):
             govee_devices[mac]["tempInC"] = decode_temp_in_c(encoded_data)
             govee_devices[mac]["tempInF"] = decode_temp_in_f(encoded_data)
             govee_devices[mac]["humidity"] = decode_humidity(encoded_data)
-            govee_devices[mac]["battery"] = battery
+            govee_devices[mac]["battery"] = str(battery).rjust(3, ' ')
             now = datetime.now()
             govee_devices[mac]["timestamp"] = now
             # print_values(mac)
@@ -170,7 +170,8 @@ try:
         stdscr.addstr(line,20, "Location"   , curses.color_pair(0) | curses.A_BOLD)
         stdscr.addstr(line,42, "Temperature", curses.color_pair(0) | curses.A_BOLD)
         stdscr.addstr(line,55, "Humidity"   , curses.color_pair(0) | curses.A_BOLD)
-        stdscr.addstr(line,67, "Last seen"  , curses.color_pair(0) | curses.A_BOLD)
+        stdscr.addstr(line,65, "Battery"    , curses.color_pair(0) | curses.A_BOLD)
+        stdscr.addstr(line,75, "Last seen"  , curses.color_pair(0) | curses.A_BOLD)
 
         for key, value in govee_devices.items():
             line = line + 1
@@ -205,7 +206,8 @@ try:
 
             stdscr.addstr(line,42, value["tempInC"] + " \u00b0", style_temperature)
             stdscr.addstr(line,55, value["humidity"] + '%', style_humidity)
-            stdscr.addstr(line,65, str((datetime.now() - value["timestamp"]).seconds).rjust(4) + " seconds ago")
+            stdscr.addstr(line,65, value["battery"] + '%')
+            stdscr.addstr(line,73, str((datetime.now() - value["timestamp"]).seconds).rjust(4) + " seconds ago")
         stdscr.refresh()
 
 except KeyboardInterrupt:
