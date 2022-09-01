@@ -120,6 +120,8 @@ limit_temperature_low  = float(data["thresholds"]["temp low"])
 limit_temperature_high = float(data["thresholds"]["temp high"])
 limit_humidity_low     = float(data["thresholds"]["humidity low"])
 limit_humidity_high    = float(data["thresholds"]["humidity high"])
+limit_battery_low      = float(data["thresholds"]["battery low"])
+feature_blink          = (data["features"]["blinking text"])
 
 adapter = get_provider().get_adapter()
 observer = Observer(adapter)
@@ -136,6 +138,11 @@ curses.use_default_colors()
 style_normal = curses.color_pair(0)
 style_low    = curses.color_pair(25) | curses.A_BOLD
 style_high   = curses.color_pair(2)  | curses.A_BOLD
+style_warn   = curses.color_pair(2)  | curses.A_BOLD
+
+if feature_blink == "true":
+    style_warn = style_warn | curses.A_BLINK
+    print("test")
 
 for i in range(0, curses.COLORS):
         curses.init_pair(i + 1, i, -1)
@@ -187,9 +194,11 @@ try:
 
             temp = float(value["tempInC"])
             humidity = float(value["humidity"])
+            battery = float(value["battery"])
 
             style_temperature = style_normal
             style_humidity    = style_normal
+            style_battery     = style_normal
 
 
             if temp < limit_temperature_low :
@@ -204,9 +213,12 @@ try:
             if humidity > limit_humidity_high :
                 style_humidity = style_high
 
+            if battery < limit_battery_low:
+                style_battery = style_warn
+                
             stdscr.addstr(line,42, value["tempInC"] + " \u00b0", style_temperature)
             stdscr.addstr(line,55, value["humidity"] + '%', style_humidity)
-            stdscr.addstr(line,65, value["battery"] + '%')
+            stdscr.addstr(line,65, value["battery"] + '%', style_battery)
             stdscr.addstr(line,73, str((datetime.now() - value["timestamp"]).seconds).rjust(4) + " seconds ago")
         stdscr.refresh()
 
@@ -216,4 +228,4 @@ except KeyboardInterrupt:
     curses.echo()
     curses.endwin()
     curses.reset()
-    sys.exit(0)
+    ys.exit(0)
