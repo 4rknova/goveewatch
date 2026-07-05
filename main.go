@@ -71,7 +71,10 @@ func loadConfig(path string) (Config, error) {
 		if !ok {
 			v = def
 		}
-		f, _ := strconv.ParseFloat(v, 64)
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			f, _ = strconv.ParseFloat(def, 64)
+		}
 		return f
 	}
 	known := map[string]string{}
