@@ -88,11 +88,9 @@ def on_advertisement(advertisement):
             govee_devices[mac]["tempInC"] = decode_temp_in_c(encoded_data)
             govee_devices[mac]["tempInF"] = decode_temp_in_f(encoded_data)
             govee_devices[mac]["humidity"] = decode_humidity(encoded_data)
-
             govee_devices[mac]["battery"] = battery
-
             now = datetime.now()
-            govee_devices[mac]["timestamp"] = now.strftime("%H:%M:%S")
+            govee_devices[mac]["timestamp"] = now
             # print_values(mac)
 
         if advertisement.rssi is not None and advertisement.rssi != 0:
@@ -100,7 +98,6 @@ def on_advertisement(advertisement):
             # print_rssi(mac)
 
         log.debug(govee_devices[mac])
-
 
 # ###########################################################################
 
@@ -115,10 +112,14 @@ if not os.path.isfile(f_config):
     text_file.close()
     exit(1)
 with open(f_config) as conf:
-    print("Loading configuration file: " + f_config)
     data = json.load(conf)
     for entry in data["devices"]:
         known_devices[entry["name"]] = entry["alias"] 
+
+limit_temperature_low  = float(data["thresholds"]["temp low"])
+limit_temperature_high = float(data["thresholds"]["temp high"])
+limit_humidity_low     = float(data["thresholds"]["humidity low"])
+limit_humidity_high    = float(data["thresholds"]["humidity high"])
 
 adapter = get_provider().get_adapter()
 observer = Observer(adapter)
@@ -129,11 +130,30 @@ rows, columns = stdscr.getmaxyx()
 
 curses.curs_set(0)
 curses.noecho()
+curses.start_color()
+curses.use_default_colors()
+
+style_normal = curses.color_pair(0)
+style_low    = curses.color_pair(25) | curses.A_BOLD
+style_high   = curses.color_pair(2)  | curses.A_BOLD
+
+for i in range(0, curses.COLORS):
+        curses.init_pair(i + 1, i, -1)
+
+'''
+try:
+    for i in range(0, 255):
+        stdscr.addstr(str(i), curses.color_pair(i))
+except curses.ERR:
+    # End of screen reached
+    pass
+    stdscr.getch()
+'''
 
 try:
     while True:
         observer.start()
-        sleep(2)
+        sleep(0.5)
         observer.stop()
 
         rows_new, columns_new = stdscr.getmaxyx()
@@ -145,23 +165,53 @@ try:
         columns = columns_new
 
         line = 0
+
+        stdscr.addstr(line, 0, "Mac Address", curses.color_pair(0) | curses.A_BOLD)
+        stdscr.addstr(line,20, "Location"   , curses.color_pair(0) | curses.A_BOLD)
+        stdscr.addstr(line,42, "Temperature", curses.color_pair(0) | curses.A_BOLD)
+        stdscr.addstr(line,55, "Humidity"   , curses.color_pair(0) | curses.A_BOLD)
+        stdscr.addstr(line,67, "Last seen"  , curses.color_pair(0) | curses.A_BOLD)
+
         for key, value in govee_devices.items():
+            line = line + 1
+            stdscr.move(line, 0)
+            stdscr.clrtoeol()
+            stdscr.move(line, 0)
+
             stdscr.addstr(line, 0, key)
             if value["name"] in known_devices.keys():
                 stdscr.addstr(line,20, known_devices[value["name"]])
             else:
                 stdscr.addstr(line,20, value["name"])
 
-            stdscr.addstr(line,42, value["tempInC"] + " \u00b0")
-            stdscr.addstr(line,55, value["humidity"] + '%')
-            stdscr.addstr(line,65, value["timestamp"])
-            line = line + 1
+            temp = float(value["tempInC"])
+            humidity = float(value["humidity"])
+
+            style_temperature = style_normal
+            style_humidity    = style_normal
+
+
+            if temp < limit_temperature_low :
+                style_temperature = style_low
+
+            if temp > limit_temperature_high :
+                style_temperature = style_high
+
+            if humidity < limit_humidity_low :
+                style_humidity = style_low
+
+            if humidity > limit_humidity_high :
+                style_humidity = style_high
+
+            stdscr.addstr(line,42, value["tempInC"] + " \u00b0", style_temperature)
+            stdscr.addstr(line,55, value["humidity"] + '%', style_humidity)
+            stdscr.addstr(line,65, str((datetime.now() - value["timestamp"]).seconds).rjust(4) + " seconds ago")
         stdscr.refresh()
 
 except KeyboardInterrupt:
-    try:
-        observer.stop()
-        sys.exit(0)
-    except SystemExit:
-        observer.stop()
-        os._exit(0)
+    observer.stop()
+    curses.curs_set(1)
+    curses.echo()
+    curses.endwin()
+    curses.reset()
+    sys.exit(0)
