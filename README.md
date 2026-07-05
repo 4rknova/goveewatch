@@ -1,6 +1,7 @@
 # Goveewatch
 
-Simple utility to monitor readings from Govee thermometer / hygrometer devices.
+A curses application to monitor readings from Govee thermometer / hygrometer
+devices.
 
 This project is based on
 [Thrilleratplay/GoveeWatcher](https://github.com/Thrilleratplay/GoveeWatcher)
