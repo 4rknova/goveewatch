@@ -275,7 +275,7 @@ func safeDrawText(s tcell.Screen, row, col int, text string, style tcell.Style) 
 	}
 }
 
-func runUI(screen tcell.Screen, cfgPath string) {
+func runMinimalUI(screen tcell.Screen, cfgPath string) {
 	cfg, _ := loadConfig(cfgPath)
 	cfgMtime, _ := statMtime(cfgPath)
 
@@ -382,13 +382,21 @@ func runUI(screen tcell.Screen, cfgPath string) {
 	}
 }
 
+func runRichUI(screen tcell.Screen, cfgPath string) {
+	runMinimalUI(screen, cfgPath) // replaced in Task 3
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 func main() {
-	debug := false
+	debug   := false
+	minimal := false
 	for _, arg := range os.Args[1:] {
-		if arg == "--debug" {
+		switch arg {
+		case "--debug":
 			debug = true
+		case "--minimal":
+			minimal = true
 		}
 	}
 
@@ -438,5 +446,9 @@ func main() {
 	screen.SetStyle(tcell.StyleDefault)
 	screen.HideCursor()
 
-	runUI(screen, cfgPath)
+	if minimal {
+		runMinimalUI(screen, cfgPath)
+	} else {
+		runRichUI(screen, cfgPath)
+	}
 }
