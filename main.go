@@ -44,7 +44,8 @@ type Config struct {
 	BatteryLow   float64
 	BlinkWarn    bool
 	TempUnit     string            // "C" or "F"
-	KnownDevices map[string]string // MAC → alias
+	Columns      int               // cards per row in rich UI (default 2)
+	KnownDevices map[string]string // device name → alias
 }
 
 func configFilePath() string {
@@ -57,6 +58,7 @@ func writeSkeletonConfig(path string) error {
 		Features: map[string]string{
 			"blinking text": "false",
 			"temp unit":     "C",
+			"columns":       "2",
 		},
 		Thresholds: map[string]string{
 			"temp low": "15", "temp high": "30",
@@ -103,6 +105,10 @@ func loadConfig(path string) (Config, error) {
 	if unit != "C" && unit != "F" {
 		unit = "C"
 	}
+	cols, err := strconv.Atoi(cf.Features["columns"])
+	if err != nil || cols < 1 {
+		cols = 2
+	}
 	return Config{
 		TempLow:      getF(cf.Thresholds, "temp low",      "15"),
 		TempHigh:     getF(cf.Thresholds, "temp high",     "30"),
@@ -111,6 +117,7 @@ func loadConfig(path string) (Config, error) {
 		BatteryLow:   getF(cf.Thresholds, "battery low",   "10"),
 		BlinkWarn:    cf.Features["blinking text"] == "true",
 		TempUnit:     unit,
+		Columns:      cols,
 		KnownDevices: known,
 	}, nil
 }
@@ -545,14 +552,15 @@ func runRichUI(screen tcell.Screen, cfgPath string) {
 				screen.SetContent(x, 1, '─', nil, subStyle)
 			}
 
-			// 2-column card grid: 4 rows per card + 1 blank row gap
+			// N-column card grid: 4 rows per card + 1 blank row gap
 			const cardGap  = 2
 			const cardRows = 5
-			cardWidth := (termW - cardGap) / 2
+			cols      := cfg.Columns
+			cardWidth := (termW - cardGap*(cols-1)) / cols
 
 			for i, d := range snapshot {
-				col := (i % 2) * (cardWidth + cardGap)
-				row := 2 + (i/2)*cardRows
+				col := (i % cols) * (cardWidth + cardGap)
+				row := 2 + (i/cols)*cardRows
 				if row+4 >= termH {
 					break
 				}
