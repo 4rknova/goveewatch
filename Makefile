@@ -1,10 +1,13 @@
-all: install-requirements
+all: goveewatch
 
-.installed: requirements.txt
-	pip install -r requirements.txt
-	touch .installed
+goveewatch: main.go go.sum
+	go build -o goveewatch .
 
-install-requirements: .installed
-
-install: install-requirements
+install: goveewatch
 	install goveewatch /usr/bin/
+
+deps:
+	go mod download
+
+clean:
+	rm -f goveewatch
