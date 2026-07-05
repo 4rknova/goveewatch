@@ -92,6 +92,29 @@ func loadConfig(path string) (Config, error) {
 	}, nil
 }
 
+// ── Decode functions ──────────────────────────────────────────────────────────
+
+// Two's complement for 3-byte signed integer.
+// Govee encodes temperature as a 24-bit value; negative temps set the high bit.
+func signEncoded(raw int32) int32 {
+	if raw > 0x7FFFFF {
+		return raw - 0x1000000
+	}
+	return raw
+}
+
+func decodeTempC(encoded int32) float64 {
+	return float64(encoded) / 10000.0
+}
+
+func decodeTempF(encoded int32) float64 {
+	return decodeTempC(encoded)*1.8 + 32
+}
+
+func decodeHumidity(encoded int32) float64 {
+	return float64(encoded%1000) / 10.0
+}
+
 // ── Entry point (stub — full implementation added in Task 6) ──────────────────
 
 func main() {}
