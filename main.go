@@ -200,7 +200,11 @@ func handleAdvertisement(path dbus.ObjectPath) {
 	mfgData, err := dev.GetManufacturerData()
 	if err == nil {
 		if rawIface, ok := mfgData[goveeManufKey]; ok {
-			raw, ok := rawIface.([]byte)
+			variant, ok := rawIface.(dbus.Variant)
+			if !ok {
+				return
+			}
+			raw, ok := variant.Value().([]byte)
 			if ok && len(raw) >= 7 {
 				// bytes [3:6] are the 3 encoded data bytes; byte [6] is battery
 				encoded := int32(raw[3])<<16 | int32(raw[4])<<8 | int32(raw[5])
