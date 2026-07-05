@@ -16,6 +16,7 @@ import (
 	"github.com/muka/go-bluetooth/api"
 	"github.com/muka/go-bluetooth/bluez/profile/adapter"
 	"github.com/muka/go-bluetooth/bluez/profile/device"
+	log "github.com/sirupsen/logrus"
 )
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -358,6 +359,59 @@ func runUI(screen tcell.Screen, cfgPath string) {
 	}
 }
 
-// ── Entry point (stub — full implementation added in Task 6) ──────────────────
+// ── Entry point ───────────────────────────────────────────────────────────────
 
-func main() {}
+func main() {
+	debug := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--debug" {
+			debug = true
+		}
+	}
+
+	if debug {
+		// muka/go-bluetooth uses logrus; set level to debug
+		log.SetLevel(log.DebugLevel)
+		// also redirect to file so it doesn't corrupt the TUI
+		f, err := os.OpenFile("goveewatch.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err == nil {
+			log.SetOutput(f)
+		}
+	}
+
+	cfgPath := configFilePath()
+
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		fmt.Println("Configuration file not found")
+		fmt.Println("Generating empty configuration file:", cfgPath)
+		if err := writeSkeletonConfig(cfgPath); err != nil {
+			fmt.Fprintln(os.Stderr, "Error writing config:", err)
+			os.Exit(1)
+		}
+		os.Exit(1)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := startBLEScanner(ctx); err != nil {
+		fmt.Fprintln(os.Stderr, "BLE error:", err)
+		os.Exit(1)
+	}
+
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "TUI error:", err)
+		os.Exit(1)
+	}
+	if err := screen.Init(); err != nil {
+		fmt.Fprintln(os.Stderr, "TUI init error:", err)
+		os.Exit(1)
+	}
+	defer screen.Fini()
+
+	screen.SetStyle(tcell.StyleDefault)
+	screen.HideCursor()
+
+	runUI(screen, cfgPath)
+}
