@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -19,20 +18,21 @@ import (
 	"github.com/muka/go-bluetooth/bluez/profile/adapter"
 	"github.com/muka/go-bluetooth/bluez/profile/device"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const goveeConfigFile = ".goveewatch.conf"
 
-// configFile mirrors the JSON on disk exactly.
+// configFile mirrors the YAML on disk exactly.
 type configFile struct {
-	Features   map[string]string `json:"features"`
-	Thresholds map[string]string `json:"thresholds"`
+	Features   map[string]string `yaml:"features"`
+	Thresholds map[string]string `yaml:"thresholds"`
 	Devices    []struct {
-		Name  string `json:"name"`
-		Alias string `json:"alias"`
-	} `json:"devices"`
+		Name  string `yaml:"name"`
+		Alias string `yaml:"alias"`
+	} `yaml:"devices"`
 }
 
 // Config is the parsed, typed representation used by the rest of the program.
@@ -43,6 +43,7 @@ type Config struct {
 	HumidHigh    float64
 	BatteryLow   float64
 	BlinkWarn    bool
+	TempUnit     string            // "C" or "F"
 	KnownDevices map[string]string // MAC → alias
 }
 
@@ -53,18 +54,21 @@ func configFilePath() string {
 
 func writeSkeletonConfig(path string) error {
 	skeleton := configFile{
-		Features: map[string]string{"blinking text": "false"},
+		Features: map[string]string{
+			"blinking text": "false",
+			"temp unit":     "C",
+		},
 		Thresholds: map[string]string{
 			"temp low": "15", "temp high": "30",
 			"humidity low": "40", "humidity high": "70",
 			"battery low": "10",
 		},
 		Devices: []struct {
-			Name  string `json:"name"`
-			Alias string `json:"alias"`
+			Name  string `yaml:"name"`
+			Alias string `yaml:"alias"`
 		}{},
 	}
-	data, err := json.MarshalIndent(skeleton, "", "    ")
+	data, err := yaml.Marshal(skeleton)
 	if err != nil {
 		return err
 	}
@@ -77,7 +81,7 @@ func loadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 	var cf configFile
-	if err := json.Unmarshal(data, &cf); err != nil {
+	if err := yaml.Unmarshal(data, &cf); err != nil {
 		return Config{}, err
 	}
 	getF := func(m map[string]string, key, def string) float64 {
@@ -95,13 +99,18 @@ func loadConfig(path string) (Config, error) {
 	for _, d := range cf.Devices {
 		known[d.Name] = d.Alias
 	}
+	unit := cf.Features["temp unit"]
+	if unit != "C" && unit != "F" {
+		unit = "C"
+	}
 	return Config{
-		TempLow:      getF(cf.Thresholds, "temp low", "15"),
-		TempHigh:     getF(cf.Thresholds, "temp high", "30"),
-		HumidLow:     getF(cf.Thresholds, "humidity low", "40"),
+		TempLow:      getF(cf.Thresholds, "temp low",      "15"),
+		TempHigh:     getF(cf.Thresholds, "temp high",     "30"),
+		HumidLow:     getF(cf.Thresholds, "humidity low",  "40"),
 		HumidHigh:    getF(cf.Thresholds, "humidity high", "70"),
-		BatteryLow:   getF(cf.Thresholds, "battery low", "10"),
+		BatteryLow:   getF(cf.Thresholds, "battery low",   "10"),
 		BlinkWarn:    cf.Features["blinking text"] == "true",
+		TempUnit:     unit,
 		KnownDevices: known,
 	}, nil
 }
