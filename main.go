@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sort"
 	"sync"
 	"time"
 
@@ -328,6 +329,9 @@ func runUI(screen tcell.Screen, cfgPath string) {
 				snapshot = append(snapshot, d)
 			}
 			devicesMu.RUnlock()
+			sort.Slice(snapshot, func(i, j int) bool {
+				return snapshot[i].Address < snapshot[j].Address
+			})
 
 			for _, d := range snapshot {
 				if d.LastSeen.IsZero() {
