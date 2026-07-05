@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -370,13 +371,15 @@ func main() {
 	}
 
 	if debug {
-		// muka/go-bluetooth uses logrus; set level to debug
 		log.SetLevel(log.DebugLevel)
-		// also redirect to file so it doesn't corrupt the TUI
 		f, err := os.OpenFile("goveewatch.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err == nil {
 			log.SetOutput(f)
 		}
+	} else {
+		// Suppress logrus output — muka/go-bluetooth emits warnings that
+		// would corrupt the TUI if they reach the terminal.
+		log.SetOutput(io.Discard)
 	}
 
 	cfgPath := configFilePath()
