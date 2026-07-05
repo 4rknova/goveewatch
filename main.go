@@ -205,11 +205,12 @@ func handleAdvertisement(path dbus.ObjectPath) {
 		if mfgMap, ok := prop.Value().(map[uint16]dbus.Variant); ok {
 			if variant, ok := mfgMap[goveeManufKey]; ok {
 				raw, ok := variant.Value().([]byte)
-				if ok && len(raw) >= 7 {
-					// bytes [3:6] are the 3 encoded data bytes; byte [6] is battery
-					encoded := int32(raw[3])<<16 | int32(raw[4])<<8 | int32(raw[5])
+				if ok && len(raw) >= 5 {
+					// BlueZ strips the 2-byte company ID from the dict value.
+					// Layout: [0]=padding, [1:4]=encoded temp/humidity, [4]=battery
+					encoded := int32(raw[1])<<16 | int32(raw[2])<<8 | int32(raw[3])
 					encoded = signEncoded(encoded)
-					battery := int(raw[6])
+					battery := int(raw[4])
 
 					name, _ := dev.GetName()
 					name = strings.Split(name, "'")[0]
@@ -329,6 +330,9 @@ func runUI(screen tcell.Screen, cfgPath string) {
 			devicesMu.RUnlock()
 
 			for _, d := range snapshot {
+				if d.LastSeen.IsZero() {
+					continue // RSSI-only entry, no sensor data yet
+				}
 				row++
 				loc := d.Name
 				if alias, ok := cfg.KnownDevices[d.Name]; ok {
