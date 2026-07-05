@@ -1,7 +1,10 @@
-all:
+all: install-requirements
 
-install:
-	install goveewatch /usr/bin/
-
-install-requirements:
+.installed: requirements.txt
 	pip install -r requirements.txt
+	touch .installed
+
+install-requirements: .installed
+
+install: install-requirements
+	install goveewatch /usr/bin/
