@@ -53,11 +53,11 @@ and set visual thresholds for temperature and humidity:
 
 # Sample output
 
-    Mac Address         Location       Temperature  Humidity    Last seen
-    A4:C1:38:XX:YY:ZZ   Bedroom        25.34 °      36.40%       2 seconds ago
-    A4:C1:38:XX:YY:ZZ   Guest Bedroom  22.24 °      40.10%       4 seconds ago
-    A4:C1:38:XX:YY:ZZ   Office         25.84 °      41.20%       2 seconds ago
-    A4:C1:38:XX:YY:ZZ   Kitchen        27.75 °      47.80%       2 seconds ago
+    Mac Address         Location       Temperature  Humidity  Battery   Last seen
+    A4:C1:38:XX:YY:ZZ   Bedroom        25.34 °      36.40%     25%       2 seconds ago
+    A4:C1:38:XX:YY:ZZ   Guest Bedroom  22.24 °      40.10%      9%       4 seconds ago
+    A4:C1:38:XX:YY:ZZ   Office         25.84 °      41.20%     64%      12 seconds ago
+    A4:C1:38:XX:YY:ZZ   Kitchen        27.75 °      47.80%     50%       2 seconds ago
 
 # References
 
