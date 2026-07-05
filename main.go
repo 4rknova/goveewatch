@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/godbus/dbus/v5"
 	"github.com/muka/go-bluetooth/api"
 	"github.com/muka/go-bluetooth/bluez/profile/adapter"
@@ -230,6 +231,130 @@ func handleAdvertisement(path dbus.ObjectPath) {
 		d.RSSI = &r
 		devices[addr] = d
 		devicesMu.Unlock()
+	}
+}
+
+// ── UI ──────────────────────────────────────────────────────────────────────
+
+func statMtime(path string) (int64, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	return info.ModTime().UnixNano(), nil
+}
+
+func safeDrawText(s tcell.Screen, row, col int, text string, style tcell.Style) {
+	w, h := s.Size()
+	if row >= h || col >= w {
+		return
+	}
+	for i, r := range []rune(text) {
+		if col+i >= w {
+			break
+		}
+		s.SetContent(col+i, row, r, nil, style)
+	}
+}
+
+func runUI(screen tcell.Screen, cfgPath string) {
+	cfg, _ := loadConfig(cfgPath)
+	cfgMtime, _ := statMtime(cfgPath)
+
+	styleNormal := tcell.StyleDefault
+	styleLow    := tcell.StyleDefault.Foreground(tcell.ColorTeal).Bold(true)
+	styleHigh   := tcell.StyleDefault.Foreground(tcell.ColorRed).Bold(true)
+	styleWarn   := styleHigh
+	if cfg.BlinkWarn {
+		styleWarn = styleWarn.Blink(true)
+	}
+	styleBold := tcell.StyleDefault.Bold(true)
+
+	evCh := make(chan tcell.Event, 1)
+	go func() {
+		for {
+			evCh <- screen.PollEvent()
+		}
+	}()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case ev := <-evCh:
+			switch ev := ev.(type) {
+			case *tcell.EventKey:
+				if (ev.Key() == tcell.KeyRune && ev.Rune() == 'q') || ev.Key() == tcell.KeyCtrlC {
+					return
+				}
+			case *tcell.EventResize:
+				screen.Sync()
+			}
+		case <-ticker.C:
+			if mtime, err := statMtime(cfgPath); err == nil && mtime != cfgMtime {
+				if newCfg, err := loadConfig(cfgPath); err == nil {
+					cfg = newCfg
+					cfgMtime = mtime
+					styleWarn = styleHigh
+					if cfg.BlinkWarn {
+						styleWarn = styleWarn.Blink(true)
+					}
+				}
+			}
+
+			screen.Clear()
+			row := 0
+
+			safeDrawText(screen, row,  0, "Mac Address", styleBold)
+			safeDrawText(screen, row, 20, "Location",    styleBold)
+			safeDrawText(screen, row, 42, "Temperature", styleBold)
+			safeDrawText(screen, row, 55, "Humidity",    styleBold)
+			safeDrawText(screen, row, 65, "Battery",     styleBold)
+			safeDrawText(screen, row, 75, "Last seen",   styleBold)
+			safeDrawText(screen, row, 90, "Signal",      styleBold)
+
+			devicesMu.RLock()
+			snapshot := make([]DeviceData, 0, len(devices))
+			for _, d := range devices {
+				snapshot = append(snapshot, d)
+			}
+			devicesMu.RUnlock()
+
+			for _, d := range snapshot {
+				row++
+				loc := d.Name
+				if alias, ok := cfg.KnownDevices[d.Name]; ok {
+					loc = alias
+				}
+
+				stTemp := styleNormal
+				stHum  := styleNormal
+				stBat  := styleNormal
+
+				if d.TempC < cfg.TempLow  { stTemp = styleLow  }
+				if d.TempC > cfg.TempHigh { stTemp = styleHigh }
+				if d.Humidity < cfg.HumidLow  { stHum = styleLow  }
+				if d.Humidity > cfg.HumidHigh { stHum = styleHigh }
+				if float64(d.Battery) < cfg.BatteryLow { stBat = styleWarn }
+
+				secs := int(time.Since(d.LastSeen).Seconds())
+				rssi := "---"
+				if d.RSSI != nil {
+					rssi = fmt.Sprintf("%4d dBm", *d.RSSI)
+				}
+
+				safeDrawText(screen, row,  0, d.Address, styleNormal)
+				safeDrawText(screen, row, 20, loc, styleNormal)
+				safeDrawText(screen, row, 42, fmt.Sprintf("%.2f \u00b0", d.TempC), stTemp)
+				safeDrawText(screen, row, 55, fmt.Sprintf("%.2f%%", d.Humidity), stHum)
+				safeDrawText(screen, row, 65, fmt.Sprintf("%3d%%", d.Battery), stBat)
+				safeDrawText(screen, row, 75, fmt.Sprintf("%4d seconds ago", secs), styleNormal)
+				safeDrawText(screen, row, 90, rssi, styleNormal)
+			}
+
+			screen.Show()
+		}
 	}
 }
 
