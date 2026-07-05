@@ -465,16 +465,29 @@ func drawCard(screen tcell.Screen, row, col, cardWidth int,
 	if float64(d.Battery) < cfg.BatteryLow { stBat = styleBatWarn }
 	batStr := fmt.Sprintf("%s %2d%% battery", blockBar(float64(d.Battery)), d.Battery)
 
-	// Row 0: border + location label
+	secs := int(time.Since(d.LastSeen).Seconds())
+	var ageStr string
+	switch {
+	case secs < 60:
+		ageStr = fmt.Sprintf("%ds ago", secs)
+	case secs < 3600:
+		ageStr = fmt.Sprintf("%dm ago", secs/60)
+	default:
+		ageStr = fmt.Sprintf("%dh ago", secs/3600)
+	}
+	styleAge := tcell.StyleDefault.Foreground(solBase01).Background(solBg)
+
 	screen.SetContent(col, row,   '│', nil, styleBorder)
 	screen.SetContent(col, row+1, '│', nil, styleBorder)
 	screen.SetContent(col, row+2, '│', nil, styleBorder)
 	screen.SetContent(col, row+3, '│', nil, styleBorder)
+	screen.SetContent(col, row+4, '│', nil, styleBorder)
 
 	safeDrawText(screen, row,   col+2, locLabel, styleName)
 	safeDrawText(screen, row+1, col+2, tempStr,  stTemp)
 	safeDrawText(screen, row+2, col+2, humStr,   stHum)
 	safeDrawText(screen, row+3, col+2, batStr,   stBat)
+	safeDrawText(screen, row+4, col+2, ageStr,   styleAge)
 
 	_ = cardWidth // reserved for future clipping
 }
@@ -554,14 +567,14 @@ func runRichUI(screen tcell.Screen, cfgPath string) {
 
 			// N-column card grid: 4 rows per card + 1 blank row gap
 			const cardGap  = 2
-			const cardRows = 5
+			const cardRows = 6
 			cols      := cfg.Columns
 			cardWidth := (termW - cardGap*(cols-1)) / cols
 
 			for i, d := range snapshot {
 				col := (i % cols) * (cardWidth + cardGap)
 				row := 2 + (i/cols)*cardRows
-				if row+4 >= termH {
+				if row+5 >= termH {
 					break
 				}
 				drawCard(screen, row, col, cardWidth, d, cfg, showF)
