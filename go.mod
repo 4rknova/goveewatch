@@ -7,6 +7,7 @@ require (
 	github.com/godbus/dbus/v5 v5.0.3
 	github.com/muka/go-bluetooth v0.0.0-20240701044517-04c4f09c514e
 	github.com/sirupsen/logrus v1.6.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -18,5 +19,4 @@ require (
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
