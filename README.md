@@ -2,15 +2,18 @@
 
 Simple utility to monitor readings from Govee thermometer hygrometer devices.
 
-This project is a fork of 
+This project is based on
 [Thrilleratplay/GoveWatcher](https://github.com/Thrilleratplay/GoveeWatcher)
 
-## Installation
+# Installation
 
 Install dependencies with:
 
     pip install -r requirements.txt
 
+To install in your system, copy the script to a suitable directory (eg. /usr/bin)
+
+# Permissions
 
 To run scripts without having to run as root to access the Bluetooth LE adapter
 you can use the setcap utility to give the Python3 binary necessary permission,
@@ -18,7 +21,7 @@ for example:
 
     sudo setcap cap_net_raw,cap_net_admin+eip $(eval readlink -f `which python3`)
     
-## Configuration
+# Configuration
 
 Running the script for the first time will generate an empty JSON configuration 
 file in the user's root directory. The filename of the configuration file is
@@ -56,4 +59,5 @@ and set visual thresholds for temperature and humidity:
     A4:C1:38:XX:YY:ZZ   Kitchen        27.75 °      47.80%       2 seconds ago
 
 # References
+
 1. [Bleson manual](https://bleson.readthedocs.io/en/latest/installing.html)
