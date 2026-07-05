@@ -21,7 +21,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const configPath = ".goveewatch.conf"
+const goveeConfigFile = ".goveewatch.conf"
 
 // configFile mirrors the JSON on disk exactly.
 type configFile struct {
@@ -46,7 +46,7 @@ type Config struct {
 
 func configFilePath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".goveewatch.conf")
+	return filepath.Join(home, goveeConfigFile)
 }
 
 func writeSkeletonConfig(path string) error {
