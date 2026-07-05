@@ -99,6 +99,8 @@ def on_advertisement(advertisement):
 
         log.debug(govee_devices[mac])
 
+
+
 # ###########################################################################
 
 if not os.path.isfile(f_config):
@@ -134,6 +136,8 @@ curses.curs_set(0)
 curses.noecho()
 curses.start_color()
 curses.use_default_colors()
+stdscr.timeout(100)
+
 
 style_normal = curses.color_pair(0)
 style_low    = curses.color_pair(25) | curses.A_BOLD
@@ -142,7 +146,6 @@ style_warn   = curses.color_pair(2)  | curses.A_BOLD
 
 if feature_blink == "true":
     style_warn = style_warn | curses.A_BLINK
-    print("test")
 
 for i in range(0, curses.COLORS):
         curses.init_pair(i + 1, i, -1)
@@ -156,12 +159,23 @@ except curses.ERR:
     pass
     stdscr.getch()
 '''
+def terminate():
+    observer.stop()
+    curses.echo()
+    curses.endwin()
+    curses.curs_set(1)
+    quit()
 
 try:
     while True:
         observer.start()
         sleep(0.5)
         observer.stop()
+
+        key = None
+        while key != -1:
+            key = stdscr.getch()
+            if key == 113: terminate()
 
         rows_new, columns_new = stdscr.getmaxyx()
 
@@ -172,7 +186,6 @@ try:
         columns = columns_new
 
         line = 0
-
         stdscr.addstr(line, 0, "Mac Address", curses.color_pair(0) | curses.A_BOLD)
         stdscr.addstr(line,20, "Location"   , curses.color_pair(0) | curses.A_BOLD)
         stdscr.addstr(line,42, "Temperature", curses.color_pair(0) | curses.A_BOLD)
@@ -200,21 +213,11 @@ try:
             style_humidity    = style_normal
             style_battery     = style_normal
 
-
-            if temp < limit_temperature_low :
-                style_temperature = style_low
-
-            if temp > limit_temperature_high :
-                style_temperature = style_high
-
-            if humidity < limit_humidity_low :
-                style_humidity = style_low
-
-            if humidity > limit_humidity_high :
-                style_humidity = style_high
-
-            if battery < limit_battery_low:
-                style_battery = style_warn
+            if temp     < limit_temperature_low  : style_temperature = style_low
+            if temp     > limit_temperature_high : style_temperature = style_high
+            if humidity < limit_humidity_low     : style_humidity    = style_low
+            if humidity > limit_humidity_high    : style_humidity    = style_high
+            if battery  < limit_battery_low      : style_battery     = style_warn
                 
             stdscr.addstr(line,42, value["tempInC"] + " \u00b0", style_temperature)
             stdscr.addstr(line,55, value["humidity"] + '%', style_humidity)
@@ -223,9 +226,4 @@ try:
         stdscr.refresh()
 
 except KeyboardInterrupt:
-    observer.stop()
-    curses.curs_set(1)
-    curses.echo()
-    curses.endwin()
-    curses.reset()
-    ys.exit(0)
+    terminate()
