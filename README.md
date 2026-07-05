@@ -32,11 +32,15 @@ Here's an example of how to setup aliases for your devices
 and set visual thresholds for temperature and humidity:
 
         {
+            "features": {
+                "blinking text" : "true"
+            }
             "thresholds": { 
-                "temp low" : "17",
-                "temp high": "20",
+                "temp low"     : "17",
+                "temp high"    : "20",
                 "humidity low" : "50",
                 "humidity high": "60"
+                "battery low"  : "5"
             },
             "devices":[
                 {
