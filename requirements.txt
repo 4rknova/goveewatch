@@ -1,0 +1,2 @@
+bleson==0.1.8
+PyBluez @ git+https://github.com/pybluez/pybluez@5096047f90a1f6a74ceb250aef6243e144170f92

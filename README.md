@@ -5,6 +5,10 @@ hygrometer devices. This project is a fork of
 [Thrilleratplay/GoveWatcher](https://github.com/Thrilleratplay/GoveeWatcher)
 
 
+Install dependencies with:
+
+    pip install -r requirements.txt
+
 Running the script for the first time will generate an empty
 JSON configuration file in the user's root directory. The
 filename of the configuration file is .goveewatch.conf
@@ -36,7 +40,8 @@ To run scripts without having to run as root to access the Bluetooth
 LE adapter you can use the setcap utility to give the Python3 binary
 necessary permission, for example:
 
-        sudo setcap cap_net_raw,cap_net_admin+eip $(eval readlink -f `which python3`)
+    sudo setcap cap_net_raw,cap_net_admin+eip $(eval readlink -f `which python3`)
+    
 
 # References
 1. [Bleson manual](https://bleson.readthedocs.io/en/latest/installing.html)
