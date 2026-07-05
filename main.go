@@ -197,34 +197,35 @@ func handleAdvertisement(path dbus.ObjectPath) {
 		return
 	}
 
-	mfgData, err := dev.GetManufacturerData()
+	// GetManufacturerData() has a broken type assertion in the library — it
+	// asserts map[uint16]interface{} but BlueZ delivers map[uint16]dbus.Variant.
+	// Read the property directly to get the real type.
+	prop, err := dev.GetProperty("ManufacturerData")
 	if err == nil {
-		if rawIface, ok := mfgData[goveeManufKey]; ok {
-			variant, ok := rawIface.(dbus.Variant)
-			if !ok {
-				return
-			}
-			raw, ok := variant.Value().([]byte)
-			if ok && len(raw) >= 7 {
-				// bytes [3:6] are the 3 encoded data bytes; byte [6] is battery
-				encoded := int32(raw[3])<<16 | int32(raw[4])<<8 | int32(raw[5])
-				encoded = signEncoded(encoded)
-				battery := int(raw[6])
+		if mfgMap, ok := prop.Value().(map[uint16]dbus.Variant); ok {
+			if variant, ok := mfgMap[goveeManufKey]; ok {
+				raw, ok := variant.Value().([]byte)
+				if ok && len(raw) >= 7 {
+					// bytes [3:6] are the 3 encoded data bytes; byte [6] is battery
+					encoded := int32(raw[3])<<16 | int32(raw[4])<<8 | int32(raw[5])
+					encoded = signEncoded(encoded)
+					battery := int(raw[6])
 
-				name, _ := dev.GetName()
-				name = strings.Split(name, "'")[0]
+					name, _ := dev.GetName()
+					name = strings.Split(name, "'")[0]
 
-				devicesMu.Lock()
-				d := devices[addr]
-				d.Address = addr
-				d.Name = name
-				d.TempC = decodeTempC(encoded)
-				d.TempF = decodeTempF(encoded)
-				d.Humidity = decodeHumidity(encoded)
-				d.Battery = battery
-				d.LastSeen = time.Now()
-				devices[addr] = d
-				devicesMu.Unlock()
+					devicesMu.Lock()
+					d := devices[addr]
+					d.Address = addr
+					d.Name = name
+					d.TempC = decodeTempC(encoded)
+					d.TempF = decodeTempF(encoded)
+					d.Humidity = decodeHumidity(encoded)
+					d.Battery = battery
+					d.LastSeen = time.Now()
+					devices[addr] = d
+					devicesMu.Unlock()
+				}
 			}
 		}
 	}
