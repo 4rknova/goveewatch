@@ -535,8 +535,9 @@ func runRichUI(screen tcell.Screen, cfgPath string) {
 			if showF { unitStr = "°F" }
 			safeDrawText(screen, 0, 0, "GOVEEWATCH", headerStyle)
 			right := fmt.Sprintf("%d sensors · %s · u=toggle", len(snapshot), unitStr)
-			if len(right) < termW {
-				safeDrawText(screen, 0, termW-len(right), right, subStyle)
+			rightW := len([]rune(right))
+			if rightW < termW {
+				safeDrawText(screen, 0, termW-rightW, right, subStyle)
 			}
 
 			// Separator
