@@ -4,7 +4,10 @@ goveewatch: main.go go.sum
 	go build -o goveewatch .
 
 install: goveewatch
-	install goveewatch /usr/bin/
+	install -m 755 goveewatch /usr/bin/goveewatch
+
+uninstall:
+	rm -f /usr/bin/goveewatch
 
 deps:
 	go mod download

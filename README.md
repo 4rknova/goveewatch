@@ -1,68 +1,113 @@
-# Goveewatch
+# goveewatch
 
-A curses application to monitor readings from Govee thermometer / hygrometer
-devices.
+A terminal UI for monitoring Govee H5075 temperature and humidity sensors over
+Bluetooth LE. Readings update continuously as advertisements are received.
 
-This project is based on
-[Thrilleratplay/GoveeWatcher](https://github.com/Thrilleratplay/GoveeWatcher)
+Based on [Thrilleratplay/GoveeWatcher](https://github.com/Thrilleratplay/GoveeWatcher).
 
-# Installation
+## Requirements
 
-Install dependencies with:
+- Linux with BlueZ (bluetoothd running)
+- Go 1.21 or later (to build from source)
 
-    pip install -r requirements.txt
+## Installation
 
-To install in your system, copy the script to a suitable directory (eg. /usr/bin)
+```
+make
+sudo make install
+```
 
-# Permissions
+This builds the binary and copies it to `/usr/bin/goveewatch`.
 
-To run scripts without having to run as root to access the Bluetooth LE adapter
-you can use the setcap utility to give the Python3 binary necessary permission,
-for example:
+To remove it:
 
-    sudo setcap cap_net_raw,cap_net_admin+eip $(eval readlink -f `which python3`)
-    
-# Configuration
+```
+sudo make uninstall
+```
 
-Running the script for the first time will generate an empty JSON configuration 
-file in the user's root directory. The filename of the configuration file is
-.goveewatch.conf
+## Permissions
 
-Here's an example of how to setup aliases for your devices
-and set visual thresholds for temperature and humidity:
+By default, accessing the Bluetooth LE adapter requires root. To run as a
+normal user, grant the binary the necessary capabilities after installing:
 
-        {
-            "features": {
-                "blinking text" : "true"
-            }
-            "thresholds": { 
-                "temp low"     : "17",
-                "temp high"    : "20",
-                "humidity low" : "50",
-                "humidity high": "60"
-                "battery low"  : "5"
-            },
-            "devices":[
-                {
-                    "name"  : "GVH5075_AAAA",
-                    "alias" : "Bedroom"
-                },
-                {
-                    "name"  : "GVH5075_AACC",
-                    "alias" : "Bathroom"
-                }
-            ]
-        }
+```
+sudo setcap cap_net_raw,cap_net_admin+eip /usr/bin/goveewatch
+```
 
+## Usage
 
-# Sample output
+```
+goveewatch [--minimal] [--debug]
+```
 
-    Mac Address         Location       Temperature  Humidity  Battery   Last seen
-    A4:C1:38:XX:YY:ZZ   Bedroom        25.34 °      36.40%     25%       2 seconds ago
-    A4:C1:38:XX:YY:ZZ   Guest Bedroom  22.24 °      40.10%      9%       4 seconds ago
-    A4:C1:38:XX:YY:ZZ   Office         25.84 °      41.20%     64%      12 seconds ago
-    A4:C1:38:XX:YY:ZZ   Kitchen        27.75 °      47.80%     50%       2 seconds ago
+- `--minimal` -- plain text table view instead of the card UI
+- `--debug` -- write BlueZ debug output to `goveewatch.log`
 
-# References
+### Key bindings
 
-1. [Bleson manual](https://bleson.readthedocs.io/en/latest/installing.html)
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `u` | Toggle between Celsius and Fahrenheit |
+
+## Configuration
+
+On first run, goveewatch writes a skeleton configuration file to
+`~/.goveewatch.conf` and exits. Edit it, then run again.
+
+The configuration file is YAML. Changes are picked up automatically while
+the program is running -- no restart needed.
+
+### Example
+
+```yaml
+features:
+    blinking text: "false"
+    temp unit: C
+    columns: "2"
+thresholds:
+    temp low: "16.5"
+    temp high: "25.5"
+    humidity low: "50"
+    humidity high: "70"
+    battery low: "5"
+devices:
+    - name: GVH5075_1A2B
+      alias: Bedroom
+    - name: GVH5075_3C4D
+      alias: Kitchen
+```
+
+### Features
+
+| Key | Values | Description |
+|-----|--------|-------------|
+| `blinking text` | `true` / `false` | Blink battery warning when level is low |
+| `temp unit` | `C` / `F` | Default temperature unit |
+| `columns` | integer >= 1 | Number of sensor cards per row (default: 2) |
+
+### Thresholds
+
+Values outside a threshold are highlighted in the UI. All values are strings.
+
+| Key | Unit | Description |
+|-----|------|-------------|
+| `temp low` | degrees C | Highlight when temperature falls below this |
+| `temp high` | degrees C | Highlight when temperature rises above this |
+| `humidity low` | percent | Highlight when humidity falls below this |
+| `humidity high` | percent | Highlight when humidity rises above this |
+| `battery low` | percent | Highlight when battery falls below this |
+
+### Devices
+
+The `devices` list maps raw BLE device names to human-readable aliases shown
+in the UI. The `name` field must match the name the sensor advertises (visible
+when running without an alias configured).
+
+```yaml
+devices:
+    - name: GVH5075_60C4
+      alias: Living room
+    - name: GVH5075_D727
+      alias: Basement
+```
