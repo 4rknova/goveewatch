@@ -160,6 +160,17 @@ var (
 	devicesMu sync.RWMutex
 )
 
+var (
+	solBg     = tcell.GetColor("#002b36")
+	solBlue   = tcell.GetColor("#268bd2")
+	solRed    = tcell.GetColor("#dc322f")
+	solTeal   = tcell.GetColor("#2aa198")
+	solYellow = tcell.GetColor("#b58900")
+	solBase01 = tcell.GetColor("#586e75")
+	solBase1  = tcell.GetColor("#93a1a1")
+	solBase3  = tcell.GetColor("#eee8d5")
+)
+
 func startBLEScanner(ctx context.Context) error {
 	a, err := adapter.GetDefaultAdapter()
 	if err != nil {
@@ -382,8 +393,177 @@ func runMinimalUI(screen tcell.Screen, cfgPath string) {
 	}
 }
 
+// dotBar returns a 10-character dot bar: ● for filled, ○ for empty. pct is 0..100.
+func dotBar(pct float64) string {
+	filled := int(pct/10.0 + 0.5)
+	if filled > 10 { filled = 10 }
+	if filled < 0  { filled = 0  }
+	return strings.Repeat("●", filled) + strings.Repeat("○", 10-filled)
+}
+
+// blockBar returns a 10-character block bar: ▓ for filled, ░ for empty. pct is 0..100.
+func blockBar(pct float64) string {
+	filled := int(pct/10.0 + 0.5)
+	if filled > 10 { filled = 10 }
+	if filled < 0  { filled = 0  }
+	return strings.Repeat("▓", filled) + strings.Repeat("░", 10-filled)
+}
+
+// drawCard draws one sensor card starting at (row, col). cardWidth is available columns.
+func drawCard(screen tcell.Screen, row, col, cardWidth int,
+	d DeviceData, cfg Config, showF bool) {
+
+	accentColor := solBlue
+	if d.TempC > cfg.TempHigh || d.TempC < cfg.TempLow {
+		accentColor = solRed
+	}
+
+	styleBorder   := tcell.StyleDefault.Foreground(accentColor).Background(solBg)
+	styleName     := tcell.StyleDefault.Foreground(solBase1).Background(solBg)
+	styleTemp     := tcell.StyleDefault.Foreground(solBase3).Background(solBg).Bold(true)
+	styleTempWarn := tcell.StyleDefault.Foreground(solRed).Background(solBg).Bold(true)
+	styleTempLow  := tcell.StyleDefault.Foreground(solTeal).Background(solBg).Bold(true)
+	styleHum      := tcell.StyleDefault.Foreground(solTeal).Background(solBg)
+	styleHumWarn  := tcell.StyleDefault.Foreground(solRed).Background(solBg)
+	styleBat      := tcell.StyleDefault.Foreground(solYellow).Background(solBg)
+	styleBatWarn  := tcell.StyleDefault.Foreground(solRed).Background(solBg)
+	if cfg.BlinkWarn {
+		styleBatWarn = styleBatWarn.Blink(true)
+	}
+
+	loc := d.Name
+	if alias, ok := cfg.KnownDevices[d.Name]; ok {
+		loc = alias
+	}
+	locLabel := strings.ToUpper(loc)
+	if d.TempC > cfg.TempHigh { locLabel += " ⚠ hot" }
+	if d.TempC < cfg.TempLow  { locLabel += " ⚠ cold" }
+
+	stTemp := styleTemp
+	if d.TempC > cfg.TempHigh { stTemp = styleTempWarn }
+	if d.TempC < cfg.TempLow  { stTemp = styleTempLow  }
+
+	var tempStr string
+	if showF {
+		tempStr = fmt.Sprintf("%.1f°F", d.TempF)
+	} else {
+		tempStr = fmt.Sprintf("%.1f°C  %.1f°F", d.TempC, d.TempF)
+	}
+
+	stHum := styleHum
+	if d.Humidity < cfg.HumidLow || d.Humidity > cfg.HumidHigh { stHum = styleHumWarn }
+	humStr := fmt.Sprintf("%s %2.0f%% humidity", dotBar(d.Humidity), d.Humidity)
+
+	stBat := styleBat
+	if float64(d.Battery) < cfg.BatteryLow { stBat = styleBatWarn }
+	batStr := fmt.Sprintf("%s %2d%% battery", blockBar(float64(d.Battery)), d.Battery)
+
+	// Row 0: border + location label
+	screen.SetContent(col, row,   '│', nil, styleBorder)
+	screen.SetContent(col, row+1, '│', nil, styleBorder)
+	screen.SetContent(col, row+2, '│', nil, styleBorder)
+	screen.SetContent(col, row+3, '│', nil, styleBorder)
+
+	safeDrawText(screen, row,   col+2, locLabel, styleName)
+	safeDrawText(screen, row+1, col+2, tempStr,  stTemp)
+	safeDrawText(screen, row+2, col+2, humStr,   stHum)
+	safeDrawText(screen, row+3, col+2, batStr,   stBat)
+
+	_ = cardWidth // reserved for future clipping
+}
+
 func runRichUI(screen tcell.Screen, cfgPath string) {
-	runMinimalUI(screen, cfgPath) // replaced in Task 3
+	cfg, _ := loadConfig(cfgPath)
+	cfgMtime, _ := statMtime(cfgPath)
+
+	showF := cfg.TempUnit == "F"
+
+	evCh := make(chan tcell.Event, 1)
+	go func() {
+		for { evCh <- screen.PollEvent() }
+	}()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case ev := <-evCh:
+			switch ev := ev.(type) {
+			case *tcell.EventKey:
+				switch {
+				case ev.Key() == tcell.KeyRune && ev.Rune() == 'q':
+					return
+				case ev.Key() == tcell.KeyCtrlC:
+					return
+				case ev.Key() == tcell.KeyRune && ev.Rune() == 'u':
+					showF = !showF
+				}
+			case *tcell.EventResize:
+				screen.Sync()
+			}
+
+		case <-ticker.C:
+			// Hot-reload config (preserve runtime showF toggle)
+			if mtime, err := statMtime(cfgPath); err == nil && mtime != cfgMtime {
+				if newCfg, err := loadConfig(cfgPath); err == nil {
+					cfg = newCfg
+					cfgMtime = mtime
+				}
+			}
+
+			termW, termH := screen.Size()
+			screen.Clear()
+
+			// Collect and sort devices
+			devicesMu.RLock()
+			snapshot := make([]DeviceData, 0, len(devices))
+			for _, d := range devices {
+				if !d.LastSeen.IsZero() {
+					snapshot = append(snapshot, d)
+				}
+			}
+			devicesMu.RUnlock()
+			sort.Slice(snapshot, func(i, j int) bool {
+				return snapshot[i].Address < snapshot[j].Address
+			})
+
+			// Header
+			headerStyle := tcell.StyleDefault.Foreground(solBlue).Background(solBg).Bold(true)
+			subStyle    := tcell.StyleDefault.Foreground(solBase01).Background(solBg)
+			unitStr := "°C"
+			if showF { unitStr = "°F" }
+			safeDrawText(screen, 0, 0, "GOVEEWATCH", headerStyle)
+			right := fmt.Sprintf("%d sensors · %s · u=toggle", len(snapshot), unitStr)
+			if len(right) < termW {
+				safeDrawText(screen, 0, termW-len(right), right, subStyle)
+			}
+
+			// Separator
+			for x := 0; x < termW; x++ {
+				screen.SetContent(x, 1, '─', nil, subStyle)
+			}
+
+			// 2-column card grid: 4 rows per card + 1 blank row gap
+			const cardGap  = 2
+			const cardRows = 5
+			cardWidth := (termW - cardGap) / 2
+
+			for i, d := range snapshot {
+				col := (i % 2) * (cardWidth + cardGap)
+				row := 2 + (i/2)*cardRows
+				if row+4 >= termH {
+					break
+				}
+				drawCard(screen, row, col, cardWidth, d, cfg, showF)
+			}
+
+			// Status line
+			safeDrawText(screen, termH-1, 0, "q · quit", subStyle)
+
+			screen.Show()
+		}
+	}
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
