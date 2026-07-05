@@ -447,7 +447,7 @@ func drawCard(screen tcell.Screen, row, col, cardWidth int,
 	if showF {
 		tempStr = fmt.Sprintf("%.1f°F", d.TempF)
 	} else {
-		tempStr = fmt.Sprintf("%.1f°C  %.1f°F", d.TempC, d.TempF)
+		tempStr = fmt.Sprintf("%.1f°C", d.TempC)
 	}
 
 	stHum := styleHum
